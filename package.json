@@ -9,6 +9,7 @@
     "engines": {
         "vscode": "^1.5.0"
     },
+    "repository": "https://github.com/jchannon/csharpextensions",
     "categories": [
         "Languages",
         "Linters",
