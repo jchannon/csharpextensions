@@ -15,7 +15,8 @@
         "Snippets"
     ],
     "activationEvents": [
-        "onCommand:extension.createClass"
+        "onCommand:extension.createClass",
+        "onCommand:extension.createInterface"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -23,6 +24,10 @@
             {
                 "command": "extension.createClass",
                 "title": "New C# Class"
+            },
+            {
+                "command": "extension.createInterface",
+                "title": "New C# Interface"
             }
         ],
         "menus": {
@@ -30,6 +35,10 @@
                 {
                     "group": "navigation@-1",
                     "command": "extension.createClass"
+                },
+                {
+                    "group": "navigation@-1",
+                    "command": "extension.createInterface"
                 }
             ]
         }

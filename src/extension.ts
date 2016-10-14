@@ -25,12 +25,24 @@ export function activate(context: vscode.ExtensionContext) {
 
     //context.subscriptions.push(disposable);
     context.subscriptions.push(vscode.commands.registerCommand('extension.createClass', createClass));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.createInterface', createInterface));
 }
 
 function createClass(args) {
+    promptAndSave(args, 'class');
+}
+
+function createInterface(args) {
+    promptAndSave(args, 'interface');
+}
+
+function promptAndSave(args, templatetype: string) {
     let incomingpath: string = args._fsPath;
-    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: incomingpath + path.sep + 'newclass.cs' })
+    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: incomingpath + path.sep + 'new' + templatetype + '.cs' })
         .then((filename) => {
+            if (typeof filename === 'undefined') {
+                return;
+            }
 
             var originalfilename = filename;
 
@@ -48,13 +60,13 @@ function createClass(args) {
 
             filename = path.basename(filename, '.cs');
 
-            openTemplateAndSaveNewFile('class', namespace, filename, originalfilename);
+            openTemplateAndSaveNewFile(templatetype, namespace, filename, originalfilename);
         });
 }
 
 function openTemplateAndSaveNewFile(type: string, namespace: string, filename: string, originalfilename: string) {
 
-    var templatefileName = 'class.tmpl';
+    var templatefileName = type + '.tmpl';
 
     vscode.workspace.openTextDocument(vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/' + templatefileName)
         .then((doc: vscode.TextDocument) => {
@@ -62,10 +74,10 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
             text = text.replace('${namespace}', namespace);
             text = text.replace('${classname}', filename);
             fs.writeFileSync(originalfilename, text);
+
             vscode.workspace.openTextDocument(originalfilename).then((doc) => {
                 vscode.window.showTextDocument(doc).then((editor) => {
                     var position = editor.selection.active;
-
                     var newPosition = position.with(4, 10);
                     var newselection = new vscode.Selection(newPosition, newPosition);
                     editor.selection = newselection;
