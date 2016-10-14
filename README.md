@@ -12,6 +12,8 @@ Welcome to C# Extensions.  This VSCode extension provides extensions to the IDE 
 
 ![Add C# Interface](./featureimages/newinterface.gif)
 
+The Add C# Class/Interface works **only** on dotnetcore projects.  It traverses up the folder tree to find the project.json and uses that as the parent folde to determine namspaces.
+
 ## Release Notes
 
 ### 1.0.0
