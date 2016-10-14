@@ -17,30 +17,21 @@
         "Snippets"
     ],
     "activationEvents": [
-        "onCommand:extension.createClass",
-        "onCommand:extension.createInterface"
+        "onCommand:extension.createFromList"
     ],
     "main": "./out/src/extension",
     "contributes": {
         "commands": [
             {
-                "command": "extension.createClass",
-                "title": "New C# Class"
-            },
-            {
-                "command": "extension.createInterface",
-                "title": "New C# Interface"
+                "command": "extension.createFromList",
+                "title": "New C# File"
             }
         ],
         "menus": {
             "explorer/context": [
                 {
                     "group": "navigation@-1",
-                    "command": "extension.createClass"
-                },
-                {
-                    "group": "navigation@-1",
-                    "command": "extension.createInterface"
+                    "command": "extension.createFromList"
                 }
             ]
         }

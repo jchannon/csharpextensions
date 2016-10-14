@@ -7,6 +7,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 var parentfinder = require('find-parent-dir');
 
+import { TemplateQuickPickItem } from './TemplateQuickPickItem'
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -25,16 +27,16 @@ export function activate(context: vscode.ExtensionContext) {
     // });
 
     //context.subscriptions.push(disposable);
-    context.subscriptions.push(vscode.commands.registerCommand('extension.createClass', createClass));
-    context.subscriptions.push(vscode.commands.registerCommand('extension.createInterface', createInterface));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.createFromList', createFromList));
 }
 
-function createClass(args) {
-    promptAndSave(args, 'class');
-}
-
-function createInterface(args) {
-    promptAndSave(args, 'interface');
+function createFromList(args) {
+    let templates = getTemplateQuickPickItems();
+    let promises : Promise<TemplateQuickPickItem> = Promise.all<TemplateQuickPickItem>(templates);
+    vscode.window.showQuickPick(promises as Thenable<Iterable<TemplateQuickPickItem>>)
+        .then(selectedTemplate => {
+            promptAndSave(args, selectedTemplate.template);
+        });
 }
 
 function promptAndSave(args, templatetype: string) {
@@ -94,6 +96,7 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
             let text = doc.getText();
             text = text.replace('${namespace}', namespace);
             text = text.replace('${classname}', filename);
+            text = text.replace(new RegExp(/\$\{Description:(.*)\n/i), '');
             let cursorPosition = findCursorInTemlpate(text);
             text = text.replace('${cursor}', '');
             fs.writeFileSync(originalfilename, text);
@@ -113,7 +116,19 @@ function findCursorInTemlpate(text: string) {
     let lineNum = preCursor.match(/\n/gi).length;
     let charNum = preCursor.substr(preCursor.lastIndexOf('\n')).length;
     return new vscode.Position(lineNum, charNum);
+}
 
+function getTemplateQuickPickItems(): PromiseLike<TemplateQuickPickItem>[] {
+    let templateDirectory = vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/';
+    return fs.readdirSync(templateDirectory).map(file => {
+        let templateName = path.basename(file, '.tmpl');
+        return vscode.workspace.openTextDocument(path.join(templateDirectory, file)).then(doc => {
+            let text = doc.getText();
+            let regex = /\$\{Description:(.*)\}/i;
+            let description = text.match(regex)[1];
+            return new TemplateQuickPickItem(templateName, description, "", templateName);
+        });
+    });
 }
 
 // this method is called when your extension is deactivated
