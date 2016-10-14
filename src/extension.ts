@@ -63,7 +63,13 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
             text = text.replace('${classname}', filename);
             fs.writeFileSync(originalfilename, text);
             vscode.workspace.openTextDocument(originalfilename).then((doc) => {
-                vscode.window.showTextDocument(doc);
+                vscode.window.showTextDocument(doc).then((editor) => {
+                    var position = editor.selection.active;
+
+                    var newPosition = position.with(4, 10);
+                    var newselection = new vscode.Selection(newPosition, newPosition);
+                    editor.selection = newselection;
+                });
             });
         });
 
