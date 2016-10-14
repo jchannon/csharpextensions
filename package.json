@@ -17,7 +17,8 @@
         "Snippets"
     ],
     "activationEvents": [
-        "onCommand:extension.createFromList"
+        "onCommand:extension.createFromList",
+        "onCommand:extension.createTemplate"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -25,6 +26,10 @@
             {
                 "command": "extension.createFromList",
                 "title": "New C# File"
+            },
+            {
+                "command": "extension.createTemplate",
+                "title": "Create New C# Template"
             }
         ],
         "menus": {

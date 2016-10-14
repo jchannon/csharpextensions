@@ -28,6 +28,30 @@ export function activate(context: vscode.ExtensionContext) {
 
     //context.subscriptions.push(disposable);
     context.subscriptions.push(vscode.commands.registerCommand('extension.createFromList', createFromList));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.createTemplate', createTemplate));
+}
+
+let templateDirectory = vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/';
+
+function createNewTemplateFile(newTemplateFile) {
+    if(!fs.exists(newTemplateFile)){
+        fs.writeFileSync(newTemplateFile, `\${Description: Template Description Here}
+        //use \${namespace} to set namespace
+        //use \${name} to set name
+        //use \${cursor} to set where the cursor will go when the file is first opened
+        //rename this file to the name of your template
+        `);
+    }
+
+}
+
+function createTemplate() {
+    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter template name', value: "templateName.tmpl" }).then(result => {
+        createNewTemplateFile(path.join(templateDirectory, result));
+        var uri = vscode.Uri.parse(templateDirectory);
+        vscode.commands.executeCommand('vscode.openFolder', uri, true);
+    });
+
 }
 
 function createFromList(args) {
@@ -91,11 +115,11 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
 
     let templatefileName = type + '.tmpl';
 
-    vscode.workspace.openTextDocument(vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/' + templatefileName)
+    vscode.workspace.openTextDocument(path.join(templateDirectory, templatefileName))
         .then((doc: vscode.TextDocument) => {
             let text = doc.getText();
             text = text.replace('${namespace}', namespace);
-            text = text.replace('${classname}', filename);
+            text = text.replace('${name}', filename);
             text = text.replace(new RegExp(/\$\{Description:(.*)\n/i), '');
             let cursorPosition = findCursorInTemlpate(text);
             text = text.replace('${cursor}', '');
