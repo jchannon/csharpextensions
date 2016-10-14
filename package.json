@@ -4,12 +4,13 @@
     "description": "C# IDE Extensions for VSCode",
     "author": "Jonathan Channon",
     "license": "SEE LICENSE IN license.txt",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publisher": "jchannon",
     "engines": {
         "vscode": "^1.5.0"
     },
     "repository": "https://github.com/jchannon/csharpextensions",
+    "icon": "logo.png",
     "categories": [
         "Languages",
         "Linters",
