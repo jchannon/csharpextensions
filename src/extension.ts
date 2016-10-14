@@ -37,6 +37,10 @@ function createInterface(args) {
 }
 
 function promptAndSave(args, templatetype: string) {
+    if(args == null)
+    {
+        args = {_fsPath: vscode.workspace.rootPath}
+    }
     let incomingpath: string = args._fsPath;
     vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: incomingpath + path.sep + 'new' + templatetype + '.cs' })
         .then((filename) => {
@@ -66,24 +70,32 @@ function promptAndSave(args, templatetype: string) {
 
 function openTemplateAndSaveNewFile(type: string, namespace: string, filename: string, originalfilename: string) {
 
-    var templatefileName = type + '.tmpl';
+    let templatefileName = type + '.tmpl';
 
     vscode.workspace.openTextDocument(vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/' + templatefileName)
         .then((doc: vscode.TextDocument) => {
-            var text = doc.getText();
+            let text = doc.getText();
             text = text.replace('${namespace}', namespace);
             text = text.replace('${classname}', filename);
+            let cursorPosition = findCursorInTemlpate(text);
+            text = text.replace('${cursor}', '');
             fs.writeFileSync(originalfilename, text);
 
             vscode.workspace.openTextDocument(originalfilename).then((doc) => {
                 vscode.window.showTextDocument(doc).then((editor) => {
-                    var position = editor.selection.active;
-                    var newPosition = position.with(4, 10);
-                    var newselection = new vscode.Selection(newPosition, newPosition);
+                    let newselection = new vscode.Selection(cursorPosition, cursorPosition);
                     editor.selection = newselection;
                 });
             });
         });
+}
+
+function findCursorInTemlpate(text : string) {
+    let cursorPos = text.indexOf('${cursor}');
+    let preCursor = text.substr(0,cursorPos);
+    let lineNum = preCursor.match(/\n/gi).length;
+    let charNum = preCursor.substr(preCursor.lastIndexOf('\n')).length;
+    return new vscode.Position(lineNum, charNum);
 
 }
 
