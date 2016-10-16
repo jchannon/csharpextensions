@@ -14,15 +14,6 @@ Welcome to C# Extensions.  This VSCode extension provides extensions to the IDE 
 
 The Add C# Class/Interface works **only** on dotnetcore projects.  It traverses up the folder tree to find the project.json and uses that as the parent folder to determine namspaces.
 
-## Release Notes
-
-### 1.0.1
-Can create class from root folder
-Templates can specifiy where cursor exists
-
-### 1.0.0
-Initial release
-
 -----------------------------------------------------------------------------------------------------------
 
 ## Licence 

@@ -1,7 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [1.0.2] - 2016-10-14
+## [1.0.3] - 2016-10-16
+### Changed
+Removed change log from release notes.md
+
+## [1.0.2] - 2016-10-16
 ### Added
 - Works on Windows
 
