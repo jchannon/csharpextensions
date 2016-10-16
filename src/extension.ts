@@ -4,6 +4,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 var parentfinder = require('find-parent-dir');
 
 // this method is called when your extension is activated
@@ -55,12 +56,16 @@ function promptAndSave(args, templatetype: string) {
                 parentdir = parentdir.substr(0, parentdir.length - 1);
             }
 
-            var newroot = parentdir.substr(parentdir.lastIndexOf('/') + 1);
+            var newroot = parentdir.substr(parentdir.lastIndexOf(path.sep) + 1);
 
             var filenamechildpath = filename.substring(filename.lastIndexOf(newroot));
 
+            var pathSepRegEx = /\//g;
+            if (os.platform() === "win32")
+                pathSepRegEx = /\\/g;
+
             var namespace = path.dirname(filenamechildpath);
-            namespace = namespace.replace(new RegExp(path.sep, 'g'), '.');
+            namespace = namespace.replace(pathSepRegEx, '.');
 
             filename = path.basename(filename, '.cs');
 
