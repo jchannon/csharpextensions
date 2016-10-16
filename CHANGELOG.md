@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [1.0.1] - 2016-10-14
+## [1.0.2] - 2016-10-14
 ### Added
 - Works on Windows
 
