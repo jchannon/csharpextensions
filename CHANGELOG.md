@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.0.5] - 2016-10-17
+### Changed
+Ask only for filename instead of full path
+
 ## [1.0.4] - 2016-10-17
 ### Changed
 If path containes hyphen in path, make sure this becomes an underscore like VS

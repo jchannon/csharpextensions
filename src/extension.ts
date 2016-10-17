@@ -42,11 +42,14 @@ function promptAndSave(args, templatetype: string) {
         args = { _fsPath: vscode.workspace.rootPath }
     }
     let incomingpath: string = args._fsPath;
-    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: incomingpath + path.sep + 'new' + templatetype + '.cs' })
+    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: 'new' + templatetype + '.cs' })
         .then((filename) => {
+
             if (typeof filename === 'undefined') {
                 return;
             }
+
+            filename = incomingpath + path.sep + filename;
 
             var originalfilename = filename;
 
