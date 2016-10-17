@@ -38,9 +38,8 @@ function createInterface(args) {
 }
 
 function promptAndSave(args, templatetype: string) {
-    if(args == null)
-    {
-        args = {_fsPath: vscode.workspace.rootPath}
+    if (args == null) {
+        args = { _fsPath: vscode.workspace.rootPath }
     }
     let incomingpath: string = args._fsPath;
     vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: incomingpath + path.sep + 'new' + templatetype + '.cs' })
@@ -66,6 +65,8 @@ function promptAndSave(args, templatetype: string) {
 
             var namespace = path.dirname(filenamechildpath);
             namespace = namespace.replace(pathSepRegEx, '.');
+
+            namespace = namespace.replace('-', '_');
 
             filename = path.basename(filename, '.cs');
 
@@ -95,9 +96,9 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
         });
 }
 
-function findCursorInTemlpate(text : string) {
+function findCursorInTemlpate(text: string) {
     let cursorPos = text.indexOf('${cursor}');
-    let preCursor = text.substr(0,cursorPos);
+    let preCursor = text.substr(0, cursorPos);
     let lineNum = preCursor.match(/\n/gi).length;
     let charNum = preCursor.substr(preCursor.lastIndexOf('\n')).length;
     return new vscode.Position(lineNum, charNum);
