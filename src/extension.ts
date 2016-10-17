@@ -5,9 +5,14 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { execFile } from 'child_process'
 var parentfinder = require('find-parent-dir');
 
 import { TemplateQuickPickItem } from './TemplateQuickPickItem'
+
+const installMessage = "Install";
+const templateDirectory = vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/';
+
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -29,34 +34,52 @@ export function activate(context: vscode.ExtensionContext) {
     //context.subscriptions.push(disposable);
     context.subscriptions.push(vscode.commands.registerCommand('extension.createFromList', createFromList));
     context.subscriptions.push(vscode.commands.registerCommand('extension.createTemplate', createTemplate));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.editTemplate', editTemplate));
 }
 
-let templateDirectory = vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/';
-
 function createNewTemplateFile(newTemplateFile) {
-    if(!fs.exists(newTemplateFile)){
+    if (!fs.exists(newTemplateFile)) {
         fs.writeFileSync(newTemplateFile, `\${Description: Template Description Here}
-        //use \${namespace} to set namespace
-        //use \${name} to set name
-        //use \${cursor} to set where the cursor will go when the file is first opened
-        //rename this file to the name of your template
+//use \${namespace} to set namespace
+//use \${name} to set name
+//use \${cursor} to set where the cursor will go when the file is first opened
         `);
     }
-
 }
 
 function createTemplate() {
     vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter template name', value: "templateName.tmpl" }).then(result => {
-        createNewTemplateFile(path.join(templateDirectory, result));
-        var uri = vscode.Uri.parse(templateDirectory);
-        vscode.commands.executeCommand('vscode.openFolder', uri, true);
+        let newTemplateFileName = path.join(templateDirectory, result);
+        createNewTemplateFile(newTemplateFileName);
+        openTemplate(newTemplateFileName);
     });
+}
 
+function editTemplate() {
+    let templates = getTemplateQuickPickItems();
+    let promises: Promise<TemplateQuickPickItem> = Promise.all<TemplateQuickPickItem>(templates);
+    vscode.window.showQuickPick(promises as Thenable<Iterable<TemplateQuickPickItem>>)
+        .then(selectedTemplate => {
+            var templateFileName = path.join(templateDirectory, selectedTemplate.template + '.tmpl');
+            openTemplate(templateFileName);
+        });
+}
+
+function openTemplate(template: string) {
+    const child = execFile('code', [templateDirectory, template], (error: any, stdout, stderr) => {
+            if (error.code === 'ENOENT') {
+                vscode.window.showErrorMessage('Please install \'code\' command into the PATH', installMessage).then(value => {
+                    if (value === installMessage) {
+                        vscode.commands.executeCommand('workbench.action.installCommandLine');
+                    }
+                });
+            }
+        });
 }
 
 function createFromList(args) {
     let templates = getTemplateQuickPickItems();
-    let promises : Promise<TemplateQuickPickItem> = Promise.all<TemplateQuickPickItem>(templates);
+    let promises: Promise<TemplateQuickPickItem> = Promise.all<TemplateQuickPickItem>(templates);
     vscode.window.showQuickPick(promises as Thenable<Iterable<TemplateQuickPickItem>>)
         .then(selectedTemplate => {
             promptAndSave(args, selectedTemplate.template);

@@ -18,7 +18,8 @@
     ],
     "activationEvents": [
         "onCommand:extension.createFromList",
-        "onCommand:extension.createTemplate"
+        "onCommand:extension.createTemplate",
+        "onCommand:extension.editTemplate"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -30,6 +31,10 @@
             {
                 "command": "extension.createTemplate",
                 "title": "Create New C# Template"
+            },
+            {
+                "command": "extension.editTemplate",
+                "title": "Edit Existing C# Template"
             }
         ],
         "menus": {
