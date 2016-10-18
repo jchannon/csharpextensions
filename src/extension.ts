@@ -34,13 +34,13 @@ function promptAndSave(args, templatetype: string) {
     let incomingpath: string = args._fsPath;
     vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: 'new' + templatetype + '.cs' })
         .then((filename) => {
-            if (typeof filename === 'undefined') {
+            if (filename === null) {
                 return;
             }
 
             filename = incomingpath + path.sep + filename;
 
-            ensureExtension(filename, 'cs');
+            ensureExtension(filename, '.cs');
 
             var originalfilename = filename;
 
