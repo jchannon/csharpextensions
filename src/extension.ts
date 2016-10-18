@@ -1,112 +1,46 @@
 'use strict';
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
-import * as path from 'path';
+import { ensureExtension } from './helpers';
+import { TemplateManager } from './TemplateManager';
 import * as fs from 'fs';
 import * as os from 'os';
-import { execFile } from 'child_process'
+import * as path from 'path';
+import * as vscode from 'vscode';
+// The module 'vscode' contains the VS Code extensibility API
+// Import the module and reference it with the alias vscode in your code below
 var parentfinder = require('find-parent-dir');
 
-import { TemplateQuickPickItem } from './TemplateQuickPickItem'
-
-const installMessage = "Install";
-const templateDirectory = vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/';
-
-
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
+const templateManager = new TemplateManager();
 export function activate(context: vscode.ExtensionContext) {
-
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    //console.log('Congratulations, your extension "newclassextension" is now active!');
-
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with  registerCommand
-    // The commandId parameter must match the command field in package.json
-    // let disposable = vscode.commands.registerCommand('extension.sayHello', (args) => {
-    //     // The code you place here will be executed every time your command is executed
-    //     // Display a message box to the user
-    //     vscode.window.showInformationMessage('Hello World!');
-    // });
-
-    //context.subscriptions.push(disposable);
     context.subscriptions.push(vscode.commands.registerCommand('extension.createFromList', createFromList));
-    context.subscriptions.push(vscode.commands.registerCommand('extension.createTemplate', createTemplate));
-    context.subscriptions.push(vscode.commands.registerCommand('extension.editTemplate', editTemplate));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.createTemplate', templateManager.createTemplate));
+    context.subscriptions.push(vscode.commands.registerCommand('extension.editTemplate', templateManager.editTemplate));
 }
 
-function createNewTemplateFile(newTemplateFile) {
-    if (!fs.exists(newTemplateFile)) {
-        fs.writeFileSync(newTemplateFile, `\${Description: Template Description Here}
-//use \${namespace} to set namespace
-//use \${name} to set name
-//use \${cursor} to set where the cursor will go when the file is first opened
-        `);
-    }
-}
-
-function createTemplate() {
-    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter template name', value: "templateName.tmpl" }).then(result => {
-        let newTemplateFileName = path.join(templateDirectory, result);
-        createNewTemplateFile(newTemplateFileName);
-        openTemplate(newTemplateFileName);
-    });
-}
-
-function editTemplate() {
-    let templates = getTemplateQuickPickItems();
-    let promises: Promise<TemplateQuickPickItem> = Promise.all<TemplateQuickPickItem>(templates);
-    vscode.window.showQuickPick(promises as Thenable<Iterable<TemplateQuickPickItem>>)
-        .then(selectedTemplate => {
-            var templateFileName = path.join(templateDirectory, selectedTemplate.template + '.tmpl');
-            openTemplate(templateFileName);
-        });
-}
-
-function openTemplate(template: string) {
-    const child = execFile('code', [templateDirectory, template], (error: any, stdout, stderr) => {
-            if (error.code === 'ENOENT') {
-                vscode.window.showErrorMessage('Please install \'code\' command into the PATH', installMessage).then(value => {
-                    if (value === installMessage) {
-                        vscode.commands.executeCommand('workbench.action.installCommandLine');
-                    }
-                });
-            }
-        });
+// this method is called when your extension is deactivated
+export function deactivate() {
 }
 
 function createFromList(args) {
-    let templates = getTemplateQuickPickItems();
-    let promises: Promise<TemplateQuickPickItem> = Promise.all<TemplateQuickPickItem>(templates);
-    vscode.window.showQuickPick(promises as Thenable<Iterable<TemplateQuickPickItem>>)
+    templateManager.showTemplateQuickPick()
         .then(selectedTemplate => {
             promptAndSave(args, selectedTemplate.template);
         });
 }
 
 function promptAndSave(args, templatetype: string) {
-    if (args == null) {
+    if (args === null) {
         args = { _fsPath: vscode.workspace.rootPath }
     }
     let incomingpath: string = args._fsPath;
     vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: 'new' + templatetype + '.cs' })
         .then((filename) => {
-
             if (typeof filename === 'undefined') {
                 return;
             }
 
             filename = incomingpath + path.sep + filename;
 
-            if (path.extname(filename) !== 'cs') {
-                if (filename.endsWith('.')) {
-                    filename = filename + 'cs';
-                } else {
-                    filename = filename + '.cs';
-                }
-            }
+            ensureExtension(filename, 'cs');
 
             var originalfilename = filename;
 
@@ -120,8 +54,9 @@ function promptAndSave(args, templatetype: string) {
             var filenamechildpath = filename.substring(filename.lastIndexOf(newroot));
 
             var pathSepRegEx = /\//g;
-            if (os.platform() === "win32")
+            if (os.platform() === "win32") {
                 pathSepRegEx = /\\/g;
+            }
 
             var namespace = path.dirname(filenamechildpath);
             namespace = namespace.replace(pathSepRegEx, '.');
@@ -138,13 +73,13 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
 
     let templatefileName = type + '.tmpl';
 
-    vscode.workspace.openTextDocument(path.join(templateDirectory, templatefileName))
+    vscode.workspace.openTextDocument(path.join(templateManager.templateDirectory, templatefileName))
         .then((doc: vscode.TextDocument) => {
             let text = doc.getText();
             text = text.replace('${namespace}', namespace);
             text = text.replace('${name}', filename);
             text = text.replace(new RegExp(/\$\{Description:(.*)\n/i), '');
-            let cursorPosition = findCursorInTemlpate(text);
+            let cursorPosition = templateManager.findCursorInTemlpate(text);
             text = text.replace('${cursor}', '');
             fs.writeFileSync(originalfilename, text);
 
@@ -155,29 +90,4 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
                 });
             });
         });
-}
-
-function findCursorInTemlpate(text: string) {
-    let cursorPos = text.indexOf('${cursor}');
-    let preCursor = text.substr(0, cursorPos);
-    let lineNum = preCursor.match(/\n/gi).length;
-    let charNum = preCursor.substr(preCursor.lastIndexOf('\n')).length;
-    return new vscode.Position(lineNum, charNum);
-}
-
-function getTemplateQuickPickItems(): PromiseLike<TemplateQuickPickItem>[] {
-    let templateDirectory = vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/';
-    return fs.readdirSync(templateDirectory).map(file => {
-        let templateName = path.basename(file, '.tmpl');
-        return vscode.workspace.openTextDocument(path.join(templateDirectory, file)).then(doc => {
-            let text = doc.getText();
-            let regex = /\$\{Description:(.*)\}/i;
-            let description = text.match(regex)[1];
-            return new TemplateQuickPickItem(templateName, description, "", templateName);
-        });
-    });
-}
-
-// this method is called when your extension is deactivated
-export function deactivate() {
 }
