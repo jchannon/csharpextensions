@@ -51,7 +51,7 @@ function promptAndSave(args, templatetype: string) {
 
             filename = incomingpath + path.sep + filename;
 
-            if (path.extname(filename) !== 'cs') {
+            if (path.extname(filename) !== '.cs') {
                 if (filename.endsWith('.')) {
                     filename = filename + 'cs';
                 } else {
