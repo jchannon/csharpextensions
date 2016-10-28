@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.0.8] - 2016-10-28
+###Changed
+Bug fix for paths with multiple hyphens
+
 ## [1.0.7] - 2016-10-18
 ### Changed
 Bug fix for extension of new file
