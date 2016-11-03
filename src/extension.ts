@@ -77,7 +77,8 @@ function promptAndSave(args, templatetype: string) {
             var namespace = path.dirname(filenamechildpath);
             namespace = namespace.replace(pathSepRegEx, '.');
 
-            namespace = namespace.replace(/-/g, "_")
+            namespace = namespace.replace(/\s+/g, "_");
+            namespace = namespace.replace(/-/g, "_");
 
             filename = path.basename(filename, '.cs');
 

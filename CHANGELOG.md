@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.0.9] - 2016-11-03
+###Changed
+Bug fix for paths with spaces in them, creates namespace with underscore insteadnot sure
+
 ## [1.0.8] - 2016-10-28
 ###Changed
 Bug fix for paths with multiple hyphens
