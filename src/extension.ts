@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import CSharpenerCodeActionProvider from './codeActionProvider';
+import CodeActionProvider from './codeActionProvider';
 var parentfinder = require('find-parent-dir');
 
 // this method is called when your extension is activated
@@ -32,7 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createClass', createClass));
     context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createInterface', createInterface));    
     
-    const codeActionProvider = new CSharpenerCodeActionProvider();
+    const codeActionProvider = new CodeActionProvider();
     let disposable = vscode.languages.registerCodeActionsProvider(documentSelector, codeActionProvider);    
     context.subscriptions.push(disposable);     
 }
