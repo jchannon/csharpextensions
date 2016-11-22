@@ -18,11 +18,14 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         let memberInitEdit = new vscode.TextEdit(bodyStartRange, args.memberInitialization);                        
 
         var edits = [];
-        if(args.document.getText().indexOf(args.privateDeclaration.trim())== -1){
+        if(args.document.getText().indexOf(args.privateDeclaration.trim()) == -1){
             edits.push(declarationEdit);
         }
         
-        edits.push(memberInitEdit);
+        if(args.document.getText().indexOf(args.memberInitialization.trim())==  -1){
+            edits.push(memberInitEdit);
+        }
+        
         edit.set(args.document.uri, edits);
         
         vscode.workspace.applyEdit(edit);
@@ -55,13 +58,15 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
             return;
         }
         
-        var tabSize = vscode.workspace.getConfiguration().get('editor.tabSize',4);
+        var tabSize = vscode.workspace.getConfiguration().get('editor.tabSize', 4);
+        var privateMemberPrefix = vscode.workspace.getConfiguration().get('csharpextensions.privateMemberPrefix', '');
+
         var parameter:InitializeFieldFromConstructor = {
             document: document,            
             type: parameterType,
             name: selectedName,
-            privateDeclaration: `${Array(tabSize*2).join(' ')} private readonly ${parameterType} _${selectedName};\r\n`,
-            memberInitialization: `${Array(tabSize*3).join(' ')} _${selectedName} = ${selectedName};\r\n`,
+            privateDeclaration: `${Array(tabSize*2).join(' ')} private readonly ${parameterType} ${privateMemberPrefix}${selectedName};\r\n`,
+            memberInitialization: `${Array(tabSize*3).join(' ')} this.${privateMemberPrefix}${selectedName} = ${selectedName};\r\n`,
             constructorBodyStart: this.findConstructorBodyStart(document,position),
             constructorStart: this.findConstructorStart(document,position)
         };
