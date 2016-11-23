@@ -44,6 +44,21 @@
                     "command": "csharpextensions.createInterface"
                 }
             ]
+        },
+        "configuration": {
+            "title": "C# Extensions configuration",
+            "properties": {
+                "csharpextensions.privateMemberPrefix": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Prefix for generated private member declarations"
+                },
+                "csharpextensions.reFormatAfterChange": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If true the document will be reformatted after codeactions are used."
+                }
+            }
         }
     },
     "scripts": {
