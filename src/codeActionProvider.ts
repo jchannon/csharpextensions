@@ -77,9 +77,9 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         if(reFormatAfterChange){
             applyPromise.then(()=>{
                 vscode.commands.executeCommand('vscode.executeFormatDocumentProvider', args.document.uri).then((formattingEdits:vscode.TextEdit[])=>{
-                    var eh = new vscode.WorkspaceEdit();
-                    eh.set(args.document.uri,formattingEdits);
-                    vscode.workspace.applyEdit(eh);    
+                    var formatEdit = new vscode.WorkspaceEdit();
+                    formatEdit.set(args.document.uri,formattingEdits);
+                    vscode.workspace.applyEdit(formatEdit);    
                 });
             })
         }
@@ -200,9 +200,9 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         if(reFormatAfterChange){
             applyPromise.then(()=>{
                 vscode.commands.executeCommand('vscode.executeFormatDocumentProvider', args.document.uri).then((formattingEdits:vscode.TextEdit[])=>{
-                    var eh = new vscode.WorkspaceEdit();
-                    eh.set(args.document.uri,formattingEdits);
-                    vscode.workspace.applyEdit(eh);    
+                    var formatEdit = new vscode.WorkspaceEdit();
+                    formatEdit.set(args.document.uri,formattingEdits);
+                    vscode.workspace.applyEdit(formatEdit);    
                 });
             })
         }
