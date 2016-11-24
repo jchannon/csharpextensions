@@ -3,13 +3,13 @@ import *  as vscode from 'vscode';
 
 export default class CodeActionProvider implements vscode.CodeActionProvider{
     private _commandIds = {
-        ctorFromReadonlyFields: 'csharpextensions.ctorFromReadonlyFields',
+        ctorFromProperties: 'csharpextensions.ctorFromProperties',
         initializeMemberFromCtor: 'csharpextensions.initializeMemberFromCtor'
     };
     
     constructor() {         
         vscode.commands.registerCommand(this._commandIds.initializeMemberFromCtor, this.initializeMemberFromCtor, this);
-        vscode.commands.registerCommand(this._commandIds.ctorFromReadonlyFields, this.executeCtorFromReadonlyFields, this);
+        vscode.commands.registerCommand(this._commandIds.ctorFromProperties, this.executeCtorFromProperties, this);
     }    
 
     
@@ -27,36 +27,34 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         return commands;  
     }
 
-    private removePrivateMemberPrefix(memberName:string):string {
-        var privateMemberPrefix = vscode.workspace.getConfiguration().get('csharpextensions.privateMemberPrefix', '');
-        if(memberName.indexOf(privateMemberPrefix) === 0){
-            return memberName.substr(privateMemberPrefix.length);
-        }
-        return memberName;
+    private camelize(str) {
+        return str.replace(/(?:^\w|[A-Z]|\b\w|\s+)/g, function(match, index) {
+            if (+match === 0) return ""; // or if (/\s+/.test(match)) for white spaces
+            return index == 0 ? match.toLowerCase() : match.toUpperCase();
+        });
     }
 
-    private executeCtorFromReadonlyFields(args:CtorFromReadonlyFieldsArguments) {        
+    private executeCtorFromProperties(args:ConstructorFromPropertiesArgument) {        
         var tabSize = vscode.workspace.getConfiguration().get('editor.tabSize', 4);
         let ctorParams = [];
         
-        if(!args.readonlyFields)
+        if(!args.properties)
             return;
         
-        args.readonlyFields.forEach((p)=>{
-            ctorParams.push(`${p.type} ${this.removePrivateMemberPrefix(p.name)}`)
-        });
-
-        let lastFieldLine = args.readonlyFields.sort((a,b)=>{
-            return b.lineNumber-a.lineNumber
-        })[0].lineNumber;
+        args.properties.forEach((p)=>{
+            ctorParams.push(`${p.type} ${this.camelize(p.name)}`)
+        });        
         
         let assignments = [];
-        args.readonlyFields.forEach((p)=>{
-            assignments.push(`${Array(tabSize*1).join(' ')} this.${p.name} = ${this.removePrivateMemberPrefix(p.name)};
+        args.properties.forEach((p)=>{
+            assignments.push(`${Array(tabSize*1).join(' ')} this.${p.name} = ${this.camelize(p.name)};
             `);
         });
-        
 
+        let firstPropertyLine = args.properties.sort((a,b)=>{
+            return a.lineNumber-b.lineNumber
+        })[0].lineNumber;
+        
         var ctorStatement = `${Array(tabSize*2).join(' ')} ${args.classDefinition.modifier} ${args.classDefinition.className}(${ctorParams.join(', ')}) 
         {
         ${assignments.join('')}   
@@ -64,16 +62,18 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         `;
 
         let edit = new vscode.WorkspaceEdit();
-        var edits = [];
+        let edits = [];
 
-        //var pos = new vscode.Position(args.classDefinition.startLine+2,0);
-        var pos = new vscode.Position(lastFieldLine+1,0);
+        let  pos = new vscode.Position(firstPropertyLine, 0);
         let range = new vscode.Range(pos,pos);
         let ctorEdit = new vscode.TextEdit(range, ctorStatement);
+
         edits.push(ctorEdit)
         edit.set(args.document.uri, edits);
-        var reFormatAfterChange = vscode.workspace.getConfiguration().get('csharpextensions.reFormatAfterChange', true);
-        var applyPromise = vscode.workspace.applyEdit(edit)
+        
+        let reFormatAfterChange = vscode.workspace.getConfiguration().get('csharpextensions.reFormatAfterChange', true);
+        let applyPromise = vscode.workspace.applyEdit(edit)
+        
         if(reFormatAfterChange){
             applyPromise.then(()=>{
                 vscode.commands.executeCommand('vscode.executeFormatDocumentProvider', args.document.uri).then((formattingEdits:vscode.TextEdit[])=>{
@@ -89,23 +89,22 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         const editor = vscode.window.activeTextEditor;
         const position = editor.selection.active;
 
-        var withinClass = this.findClassFromLine(document, position.line);
+        let withinClass = this.findClassFromLine(document, position.line);
         if(!withinClass)
             return null;
 
-        var fields = [];
-        var temp;        
-        document.lineCount
-        var lineNo = 0;
-        while(lineNo < document.lineCount){
-            var readonlyRegex = new RegExp(/(private|protected)\sreadonly\s(\w+)\s(\w+);/g);        
-            var textLine = document.lineAt(lineNo);
-            var match = readonlyRegex.exec(textLine.text);
+        let properties = [];          
+        let lineNo = 0;
+
+        while(lineNo < document.lineCount) {
+            let readonlyRegex = new RegExp(/(public|private|protected)\s(\w+)\s(\w+)\s?{\s?(get;)\s?(private\s)?(set;)?\s?}/g);        
+            let textLine = document.lineAt(lineNo);
+            let match = readonlyRegex.exec(textLine.text);
                         
             if(match){
-                var clazz = this.findClassFromLine(document,lineNo);
+                let clazz = this.findClassFromLine(document,lineNo);
                 if(clazz.className === withinClass.className) {                
-                    var field :CSharpReadonlyFieldDefinition = {
+                    let prop: CSharpPropertyDefinition = {
                         lineNumber: lineNo,
                         class: clazz,
                         modifier: match[1],
@@ -114,41 +113,28 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
                         statement: match[0]
                     }
 
-                    fields.push(field);
+                    properties.push(prop);
                 }
             }
             lineNo+=1;
         }
 
-        /*
-        while((temp = readonlyRegex.exec(document.getText()))!= null){
-            var field : CSharpReadonlyFieldDefinition = {
-                modifier: temp[1],
-                type: temp[2],
-                name: temp[3],
-                statement: temp[0]
-            };
-
-            fields.push(field);
-        }
-        */
-
-        if(!fields.length)
+        if(!properties.length)
             return null;
 
         var classDefinition = this.findClassFromLine(document, position.line);
         if(!classDefinition)
             return;
 
-        var parameter : CtorFromReadonlyFieldsArguments = {
-            readonlyFields: fields,
+        var parameter : ConstructorFromPropertiesArgument = {
+            properties: properties,
             classDefinition: classDefinition,
             document: document
         };
 
         let cmd: vscode.Command = {
-            title: "Initialize ctor from readonly fields...",
-            command: this._commandIds.ctorFromReadonlyFields,
+            title: "Initialize ctor from properties...",
+            command: this._commandIds.ctorFromProperties,
             arguments: [parameter]
         };
 
@@ -283,6 +269,7 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         return new vscode.Position(position.line,0);
     }
 }
+
 interface CSharpClassDefinition {
     startLine: number,
     endLine: number,
@@ -291,7 +278,7 @@ interface CSharpClassDefinition {
     statement: string
 }
 
-interface CSharpReadonlyFieldDefinition{
+interface CSharpPropertyDefinition {
     class: CSharpClassDefinition,
     modifier: string,
     type: string,
@@ -300,10 +287,10 @@ interface CSharpReadonlyFieldDefinition{
     lineNumber: number            
 }
 
-interface CtorFromReadonlyFieldsArguments{
+interface ConstructorFromPropertiesArgument{
     document: vscode.TextDocument,    
     classDefinition: CSharpClassDefinition,
-    readonlyFields: CSharpReadonlyFieldDefinition[]
+    properties: CSharpPropertyDefinition[]
 }
 
 interface InitializeFieldFromConstructor {
