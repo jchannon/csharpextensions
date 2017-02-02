@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2017-02-02
+### Added
+- Ability to create new class/interface if using csproj files on .Net Core
+
 ## [1.1.0] - 2016-11-25
 ### Added
 - Initialize fields from constructor

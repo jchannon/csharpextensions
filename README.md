@@ -21,7 +21,7 @@ Welcome to C# Extensions.  This VSCode extension provides extensions to the IDE 
 ![Add constructor from properties](./featureimages/ctorfromprop.gif)
 
 
-The Add C# Class/Interface works **only** on dotnetcore projects.  It traverses up the folder tree to find the project.json and uses that as the parent folder to determine namspaces.
+This extension traverses up the folder tree to find the project.json or *.csproj and uses that as the parent folder to determine namspaces.
 
 
 -----------------------------------------------------------------------------------------------------------
