@@ -6,7 +6,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import CodeActionProvider from './codeActionProvider';
-var parentfinder = require('find-parent-dir');
+const parentfinder = require('find-parent-dir');
+const findupglob = require('find-up-glob');
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -30,11 +31,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     //context.subscriptions.push(disposable);
     context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createClass', createClass));
-    context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createInterface', createInterface));    
-    
+    context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createInterface', createInterface));
+
     const codeActionProvider = new CodeActionProvider();
-    let disposable = vscode.languages.registerCodeActionsProvider(documentSelector, codeActionProvider);    
-    context.subscriptions.push(disposable);     
+    let disposable = vscode.languages.registerCodeActionsProvider(documentSelector, codeActionProvider);
+    context.subscriptions.push(disposable);
 }
 
 function createClass(args) {
@@ -51,32 +52,30 @@ function promptAndSave(args, templatetype: string) {
     }
     let incomingpath: string = args._fsPath;
     vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: 'new' + templatetype + '.cs' })
-        .then((filename) => {
+        .then((newfilename) => {
 
-            if (typeof filename === 'undefined') {
+            if (typeof newfilename === 'undefined') {
                 return;
             }
 
-            filename = incomingpath + path.sep + filename;
+            var newfilepath = incomingpath + path.sep + newfilename;
 
-            if (path.extname(filename) !== '.cs') {
-                if (filename.endsWith('.')) {
-                    filename = filename + 'cs';
-                } else {
-                    filename = filename + '.cs';
-                }
+            newfilepath = correctExtension(newfilepath);
+
+            var originalfilepath = newfilepath;
+
+            var projectrootdir = getProjectRootDirOfFilePath(newfilepath);
+
+            if (projectrootdir == null) {
+                vscode.window.showErrorMessage("Unable to find project.json or *.csproj");
+                return;
             }
 
-            var originalfilename = filename;
+            projectrootdir = removeTrailingSeparator(projectrootdir);
 
-            var parentdir = parentfinder.sync(path.dirname(filename), 'project.json');
-            if (parentdir[parentdir.length - 1] === path.sep) {
-                parentdir = parentdir.substr(0, parentdir.length - 1);
-            }
+            var newroot = projectrootdir.substr(projectrootdir.lastIndexOf(path.sep) + 1);
 
-            var newroot = parentdir.substr(parentdir.lastIndexOf(path.sep) + 1);
-
-            var filenamechildpath = filename.substring(filename.lastIndexOf(newroot));
+            var filenamechildpath = newfilepath.substring(newfilepath.lastIndexOf(newroot));
 
             var pathSepRegEx = /\//g;
             if (os.platform() === "win32")
@@ -88,13 +87,43 @@ function promptAndSave(args, templatetype: string) {
             namespace = namespace.replace(/\s+/g, "_");
             namespace = namespace.replace(/-/g, "_");
 
-            filename = path.basename(filename, '.cs');
+            newfilepath = path.basename(newfilepath, '.cs');
 
-            openTemplateAndSaveNewFile(templatetype, namespace, filename, originalfilename);
+            openTemplateAndSaveNewFile(templatetype, namespace, newfilepath, originalfilepath);
         });
 }
 
-function openTemplateAndSaveNewFile(type: string, namespace: string, filename: string, originalfilename: string) {
+function correctExtension(filename) {
+    if (path.extname(filename) !== '.cs') {
+        if (filename.endsWith('.')) {
+            filename = filename + 'cs';
+        } else {
+            filename = filename + '.cs';
+        }
+    }
+    return filename;
+}
+
+function removeTrailingSeparator(filepath) {
+    if (filepath[filepath.length - 1] === path.sep) {
+        filepath = filepath.substr(0, filepath.length - 1);
+    }
+    return filepath;
+}
+
+function getProjectRootDirOfFilePath(filepath) {
+    var projectrootdir = parentfinder.sync(path.dirname(filepath), 'project.json');
+    if (projectrootdir == null) {
+        var csprojfiles = findupglob.sync('*.csproj', { cwd: path.dirname(filepath) });
+        if (csprojfiles == null) {
+            return null;
+        }
+        projectrootdir = path.dirname(csprojfiles[0]);
+    }
+    return projectrootdir;
+}
+
+function openTemplateAndSaveNewFile(type: string, namespace: string, filename: string, originalfilepath: string) {
 
     let templatefileName = type + '.tmpl';
 
@@ -105,9 +134,9 @@ function openTemplateAndSaveNewFile(type: string, namespace: string, filename: s
             text = text.replace('${classname}', filename);
             let cursorPosition = findCursorInTemlpate(text);
             text = text.replace('${cursor}', '');
-            fs.writeFileSync(originalfilename, text);
+            fs.writeFileSync(originalfilepath, text);
 
-            vscode.workspace.openTextDocument(originalfilename).then((doc) => {
+            vscode.workspace.openTextDocument(originalfilepath).then((doc) => {
                 vscode.window.showTextDocument(doc).then((editor) => {
                     let newselection = new vscode.Selection(cursorPosition, cursorPosition);
                     editor.selection = newselection;
