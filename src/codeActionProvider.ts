@@ -227,13 +227,14 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         
         var tabSize = vscode.workspace.getConfiguration().get('editor.tabSize', 4);
         var privateMemberPrefix = vscode.workspace.getConfiguration().get('csharpextensions.privateMemberPrefix', '');
-
+        var prefixWithThis = vscode.workspace.getConfiguration().get('csharpextensions.useThisForCtorAssignments', true);
+        
         var parameter:InitializeFieldFromConstructor = {
             document: document,            
             type: parameterType,
             name: selectedName,
             privateDeclaration: `${Array(tabSize*2).join(' ')} private readonly ${parameterType} ${privateMemberPrefix}${selectedName};\r\n`,
-            memberInitialization: `${Array(tabSize*3).join(' ')} this.${privateMemberPrefix}${selectedName} = ${selectedName};\r\n`,
+            memberInitialization: `${Array(tabSize*3).join(' ')} ${(prefixWithThis?'this.':'')}${privateMemberPrefix}${selectedName} = ${selectedName};\r\n`,
             constructorBodyStart: this.findConstructorBodyStart(document,position),
             constructorStart: this.findConstructorStart(document,position)
         };        
