@@ -22,8 +22,9 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         
         var ctorPCommand = this.getCtorpCommand(document, range, context, token);
         if(ctorPCommand)
-            commands.push(ctorPCommand);
+            commands.push(ctorPCommand);                
 
+        
         return commands;  
     }
 
@@ -202,7 +203,7 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         if(!wordRange)
             return null;
 
-        var regex = new RegExp(/(public|private|protected)\s(.*)\(([\s\S]*?)\)/gi);
+        var regex = new RegExp(/(public|private|protected)\s(.*?)\(([\s\S]*?)\)/gi);
         var matches = regex.exec(surrounding);
         if(!matches)
             return null;
