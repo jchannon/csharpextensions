@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2017-03-01
+### Added
+- Ability to turn "this" prefix on and off
+
+### Changed 
+
+- Detect base classes for initializing members 
+
 ## [1.2.0] - 2017-02-02
 ### Added
 - Ability to create new class/interface if using csproj files on .Net Core
@@ -11,11 +19,11 @@ All notable changes to this project will be documented in this file.
 - Initialize constructor from properties
 
 ## [1.0.9] - 2016-11-03
-###Changed
+### Changed
 - Bug fix for paths with spaces in them, creates namespace with underscore insteadnot sure
 
 ## [1.0.8] - 2016-10-28
-###Changed
+### Changed
 - Bug fix for paths with multiple hyphens
 
 ## [1.0.7] - 2016-10-18
