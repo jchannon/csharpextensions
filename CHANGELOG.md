@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2017-03-01
+### Added
+- Ability to create property and read-only property from constructor
+
+### Changed
+- Fix for placing field outside class in some circumstances
+
 ## [1.2.1] - 2017-03-01
 ### Added
 - Ability to turn "this" prefix on and off
