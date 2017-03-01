@@ -4,11 +4,11 @@ import *  as vscode from 'vscode';
 export default class CodeActionProvider implements vscode.CodeActionProvider{
     private _commandIds = {
         ctorFromProperties: 'csharpextensions.ctorFromProperties',
-        initializeMemberFromCtor: 'csharpextensions.initializeMemberFromCtor'
+        initializeMemberFromCtor: 'csharpextensions.initializeMemberFromCtor',
     };
     
     constructor() {         
-        vscode.commands.registerCommand(this._commandIds.initializeMemberFromCtor, this.initializeMemberFromCtor, this);
+        vscode.commands.registerCommand(this._commandIds.initializeMemberFromCtor, this.initializeMemberFromCtor, this);        
         vscode.commands.registerCommand(this._commandIds.ctorFromProperties, this.executeCtorFromProperties, this);
     }    
 
@@ -16,9 +16,17 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
      public provideCodeActions(document:vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken) : vscode.Command[] {
         var commands = [];
         
-        var initalizeFromCtorCommand = this.getInitializeFromCtorCommand(document,range,context,token);
+        var initalizeFromCtorCommand = this.getInitializeFromCtorCommand(document,range,context,token, MemberGenerationType.PrivateField);
         if(initalizeFromCtorCommand)
             commands.push(initalizeFromCtorCommand)
+
+        var initalizeFromCtorCommand2 = this.getInitializeFromCtorCommand(document,range,context,token, MemberGenerationType.ReadonlyProperty);
+        if(initalizeFromCtorCommand2)
+            commands.push(initalizeFromCtorCommand2)
+        
+        var initalizeFromCtorCommand3 = this.getInitializeFromCtorCommand(document,range,context,token, MemberGenerationType.Property);
+        if(initalizeFromCtorCommand3)
+            commands.push(initalizeFromCtorCommand3)
         
         var ctorPCommand = this.getCtorpCommand(document, range, context, token);
         if(ctorPCommand)
@@ -167,15 +175,15 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         var bodyStartRange = new vscode.Range(args.constructorBodyStart, args.constructorBodyStart)
         var declarationRange = new vscode.Range(args.constructorStart, args.constructorStart);        
         
-        let declarationEdit = new vscode.TextEdit(declarationRange, args.privateDeclaration);
-        let memberInitEdit = new vscode.TextEdit(bodyStartRange, args.memberInitialization);                        
+        let declarationEdit = new vscode.TextEdit(declarationRange, args.memberGeneration.declaration);
+        let memberInitEdit = new vscode.TextEdit(bodyStartRange, args.memberGeneration.assignment);                        
 
         var edits = [];
-        if(args.document.getText().indexOf(args.privateDeclaration.trim()) == -1){
+        if(args.document.getText().indexOf(args.memberGeneration.declaration.trim()) == -1){
             edits.push(declarationEdit);
         }
         
-        if(args.document.getText().indexOf(args.memberInitialization.trim())==  -1){
+        if(args.document.getText().indexOf(args.memberGeneration.assignment.trim())==  -1){
             edits.push(memberInitEdit);
         }
         
@@ -195,7 +203,7 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         }
     }
 
-    private getInitializeFromCtorCommand(document:vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken):vscode.Command {
+    private getInitializeFromCtorCommand(document:vscode.TextDocument, range: vscode.Range, context: vscode.CodeActionContext, token: vscode.CancellationToken, memberGenerationType: MemberGenerationType ):vscode.Command {
         const editor = vscode.window.activeTextEditor;        
         const position = editor.selection.active;
         var surrounding = document.getText(new vscode.Range(new vscode.Position(position.line-2,0),new vscode.Position(position.line+2,0)));
@@ -229,22 +237,52 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         var tabSize = vscode.workspace.getConfiguration().get('editor.tabSize', 4);
         var privateMemberPrefix = vscode.workspace.getConfiguration().get('csharpextensions.privateMemberPrefix', '');
         var prefixWithThis = vscode.workspace.getConfiguration().get('csharpextensions.useThisForCtorAssignments', true);
+
+        let memberGeneration:MemberGenerationProperties = null;
+        if(memberGenerationType === MemberGenerationType.PrivateField){
+            memberGeneration = {
+                type: memberGenerationType,
+                declaration: `${Array(tabSize*2).join(' ')} private readonly ${parameterType} ${privateMemberPrefix}${selectedName};\r\n`,
+                assignment: `${Array(tabSize*3).join(' ')} ${(prefixWithThis?'this.':'')}${privateMemberPrefix}${selectedName} = ${selectedName};\r\n`
+            };
+        }else if( memberGenerationType === MemberGenerationType.ReadonlyProperty){
+            var name = selectedName[0].toUpperCase()+selectedName.substr(1);
+            memberGeneration = {
+                type: memberGenerationType,
+                declaration: `${Array(tabSize*2).join(' ')} public ${parameterType} ${name} { get; }\r\n`,
+                assignment: `${Array(tabSize*3).join(' ')} ${(prefixWithThis?'this.':'')}${name} = ${selectedName};\r\n`
+            };
+        }else if( memberGenerationType === MemberGenerationType.Property){
+            var name = selectedName[0].toUpperCase()+selectedName.substr(1);
+            memberGeneration = {
+                type: memberGenerationType,
+                declaration: `${Array(tabSize*2).join(' ')} public ${parameterType} ${name} { get;set; }\r\n`,
+                assignment: `${Array(tabSize*3).join(' ')} ${(prefixWithThis?'this.':'')}${name} = ${selectedName};\r\n`
+            };
+        }
         
         var parameter:InitializeFieldFromConstructor = {
             document: document,            
             type: parameterType,
             name: selectedName,
-            privateDeclaration: `${Array(tabSize*2).join(' ')} private readonly ${parameterType} ${privateMemberPrefix}${selectedName};\r\n`,
-            memberInitialization: `${Array(tabSize*3).join(' ')} ${(prefixWithThis?'this.':'')}${privateMemberPrefix}${selectedName} = ${selectedName};\r\n`,
+            memberGeneration: memberGeneration,
             constructorBodyStart: this.findConstructorBodyStart(document,position),
             constructorStart: this.findConstructorStart(document,position)
-        };        
+        };                
                  
         let cmd: vscode.Command = {
-            title: "Initialize field from parameter...",
+            title: "",
             command: this._commandIds.initializeMemberFromCtor,
             arguments: [parameter]
         };
+
+        if(memberGenerationType === MemberGenerationType.PrivateField){
+            cmd.title = "Initialize field from parameter...";
+        } else if ( memberGenerationType === MemberGenerationType.ReadonlyProperty){
+            cmd.title = "Initialize readonly property from parameter...";
+        } else if ( memberGenerationType === MemberGenerationType.Property){
+            cmd.title = "Initialize property from parameter...";
+        }
 
         return cmd;
     }
@@ -270,6 +308,18 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         
         return new vscode.Position(position.line,0);
     }
+}
+
+enum MemberGenerationType {
+    Property,
+    ReadonlyProperty,
+    PrivateField
+}
+
+interface MemberGenerationProperties{
+    type: MemberGenerationType,
+    assignment: string,
+    declaration: string
 }
 
 interface CSharpClassDefinition {
@@ -299,8 +349,9 @@ interface InitializeFieldFromConstructor {
     document: vscode.TextDocument,    
     type:string,
     name: string,
-    privateDeclaration: string,
-    memberInitialization:string,
+    memberGeneration: MemberGenerationProperties,
+    //privateDeclaration: string,
+    //memberInitialization:string,
     constructorBodyStart: vscode.Position,
     constructorStart: vscode.Position,    
 }
