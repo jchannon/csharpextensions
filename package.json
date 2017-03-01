@@ -53,6 +53,11 @@
                     "default": "",
                     "description": "Prefix for generated private member declarations"
                 },
+                "csharpextensions.useThisForCtorAssignments": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Wether or not a ctor assignment of a property or variable should be prefixed with this."
+                },
                 "csharpextensions.reFormatAfterChange": {
                     "type": "boolean",
                     "default": true,

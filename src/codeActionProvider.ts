@@ -22,8 +22,9 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         
         var ctorPCommand = this.getCtorpCommand(document, range, context, token);
         if(ctorPCommand)
-            commands.push(ctorPCommand);
+            commands.push(ctorPCommand);                
 
+        
         return commands;  
     }
 
@@ -202,7 +203,7 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         if(!wordRange)
             return null;
 
-        var regex = new RegExp(/(public|private|protected)\s(.*)\(([\s\S]*?)\)/gi);
+        var regex = new RegExp(/(public|private|protected)\s(.*?)\(([\s\S]*?)\)/gi);
         var matches = regex.exec(surrounding);
         if(!matches)
             return null;
@@ -227,13 +228,14 @@ export default class CodeActionProvider implements vscode.CodeActionProvider{
         
         var tabSize = vscode.workspace.getConfiguration().get('editor.tabSize', 4);
         var privateMemberPrefix = vscode.workspace.getConfiguration().get('csharpextensions.privateMemberPrefix', '');
-
+        var prefixWithThis = vscode.workspace.getConfiguration().get('csharpextensions.useThisForCtorAssignments', true);
+        
         var parameter:InitializeFieldFromConstructor = {
             document: document,            
             type: parameterType,
             name: selectedName,
             privateDeclaration: `${Array(tabSize*2).join(' ')} private readonly ${parameterType} ${privateMemberPrefix}${selectedName};\r\n`,
-            memberInitialization: `${Array(tabSize*3).join(' ')} this.${privateMemberPrefix}${selectedName} = ${selectedName};\r\n`,
+            memberInitialization: `${Array(tabSize*3).join(' ')} ${(prefixWithThis?'this.':'')}${privateMemberPrefix}${selectedName} = ${selectedName};\r\n`,
             constructorBodyStart: this.findConstructorBodyStart(document,position),
             constructorStart: this.findConstructorStart(document,position)
         };        
