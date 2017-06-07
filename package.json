@@ -76,10 +76,15 @@
         "vscode": "^1.0.0",
         "mocha": "^2.3.3",
         "@types/node": "^6.0.40",
-        "@types/mocha": "^2.2.32"
+        "@types/mocha": "^2.2.32",
+        "@types/mz": "0.0.30"
     },
     "dependencies": {
         "find-parent-dir": "^0.3.0",
-        "find-up-glob": "^1.0.0"
+        "find-up-glob": "^1.0.0",
+        "lodash.debounce": "^4.0.8",
+        "mz": "^2.6.0",
+        "strip-bom": "^3.0.0",
+        "elementtree": "^0.1.7"
     }
 }

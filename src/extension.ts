@@ -5,7 +5,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as CsprojUtil from './csproj'
 import CodeActionProvider from './codeActionProvider';
+import { CsprojAndFile, Csproj, ActionArgs, ItemType } from './types'
 const parentfinder = require('find-parent-dir');
 const findupglob = require('find-up-glob');
 
@@ -86,15 +88,39 @@ function promptAndSave(args, templatetype: string) {
             if (os.platform() === "win32")
                 pathSepRegEx = /\\/g;
 
-            var namespace = path.dirname(filenamechildpath);
-            namespace = namespace.replace(pathSepRegEx, '.');
 
-            namespace = namespace.replace(/\s+/g, "_");
-            namespace = namespace.replace(/-/g, "_");
 
-            newfilepath = path.basename(newfilepath, '.cs');
+            var resolved = CsprojUtil.getPath(args.fsPath).then(function (res: string) {
+                console.log("1a. csproj path:" + res);
+                var result = CsprojUtil.forFile(res);
+                console.log("1b. result:" + result);
+                return result;
+            }).then(function (csproj) {
+                console.log("2a. csproj obj:" + csproj);
+                var csprojNamespace = CsprojUtil.getRootNamespace(csproj);
+                console.log("csprojNamespace:" + csprojNamespace);
+                return csprojNamespace;
+            }).then(function (csprojNamespace) {
+                if (csprojNamespace != undefined) {
+                    namespace = csprojNamespace;
+                } else {
+                    var namespace = path.dirname(filenamechildpath);
+                    namespace = namespace.replace(pathSepRegEx, '.');
 
-            openTemplateAndSaveNewFile(templatetype, namespace, newfilepath, originalfilepath);
+                    namespace = namespace.replace(/\s+/g, "_");
+                    namespace = namespace.replace(/-/g, "_");
+                }
+                newfilepath = path.basename(newfilepath, '.cs');
+
+                openTemplateAndSaveNewFile(templatetype, namespace, newfilepath, originalfilepath);
+            }).catch(function (err) {
+                console.log(err);
+
+            });
+
+
+
+
         });
 }
 
