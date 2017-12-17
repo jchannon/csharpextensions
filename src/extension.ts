@@ -16,6 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
         language: 'csharp',
         scheme: 'file'
     };
+
     // Use the console to output diagnostic information (console.log) and errors (console.error)
     // This line of code will only be executed once when your extension is activated
     //console.log('Congratulations, your extension "newclassextension" is now active!');
@@ -51,14 +52,16 @@ function promptAndSave(args, templatetype: string) {
         args = { _fsPath: vscode.workspace.rootPath }
     }
     let incomingpath: string = args._fsPath;
-    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: 'new' + templatetype + '.cs' })
+
+    let promptPrefix = templatetype === 'interface' ? 'INew' : 'New';
+    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: promptPrefix + capitalize(templatetype) + '.cs'})
         .then((newfilename) => {
 
             if (typeof newfilename === 'undefined') {
                 return;
             }
 
-            var newfilepath = incomingpath + path.sep + newfilename;
+            let newfilepath = incomingpath + path.sep + newfilename;
 
             if (fs.existsSync(newfilepath)) {
                 vscode.window.showErrorMessage("File already exists");
@@ -67,35 +70,45 @@ function promptAndSave(args, templatetype: string) {
 
             newfilepath = correctExtension(newfilepath);
 
-            var originalfilepath = newfilepath;
+            let originalfilepath = newfilepath;
 
-            var projectrootdir = getProjectRootDirOfFilePath(newfilepath);
+            let projectrootdir = getProjectRootDirOfFilePath(newfilepath);
 
             if (projectrootdir == null) {
                 vscode.window.showErrorMessage("Unable to find project.json or *.csproj");
                 return;
             }
 
-            projectrootdir = removeTrailingSeparator(projectrootdir);
+            let filenamechildpath = newfilepath.slice(projectrootdir.length);
+            if(filenamechildpath .startsWith(path.sep)) {
+                filenamechildpath = filenamechildpath.substring(1);
+            }
 
-            var newroot = projectrootdir.substr(projectrootdir.lastIndexOf(path.sep) + 1);
+            let namespaceTokens = path.dirname(filenamechildpath)
+                                    .split(path.sep)
+                                    .filter(token => token.trim.length <= 0);
+            if(vscode.workspace.getConfiguration().get('csharpextensions.namespace.capitalize')) {
+                namespaceTokens = namespaceTokens.map(item => capitalize(item));
+            }
+            let namespaceTokenMappings = vscode.workspace.getConfiguration().get('csharpextensions.namespace.tokenMappings');
+            if(namespaceTokenMappings instanceof Object) {
+                namespaceTokens = namespaceTokens.map(item => 
+                    namespaceTokenMappings[item.toLowerCase()] != null ? 
+                    namespaceTokenMappings[item.toLowerCase()] : item);
+            }
 
-            var filenamechildpath = newfilepath.substring(newfilepath.lastIndexOf(newroot));
-
-            var pathSepRegEx = /\//g;
-            if (os.platform() === "win32")
-                pathSepRegEx = /\\/g;
-
-            var namespace = path.dirname(filenamechildpath);
-            namespace = namespace.replace(pathSepRegEx, '.');
-
+            let namespace = namespaceTokens.join('.');
             namespace = namespace.replace(/\s+/g, "_");
             namespace = namespace.replace(/-/g, "_");
 
-            newfilepath = path.basename(newfilepath, '.cs');
-
-            openTemplateAndSaveNewFile(templatetype, namespace, newfilepath, originalfilepath);
+            // Chomp of .cs and other extension like MyClass.Writer.cs for partial classes.
+            let classname = newfilename.substring(0, newfilename.indexOf('.'));
+            openTemplateAndSaveNewFile(templatetype, namespace, classname, originalfilepath);
         });
+}
+
+function capitalize(word : string) {
+    return word.charAt(0).toUpperCase() + word.substr(1);
 }
 
 function correctExtension(filename) {
@@ -107,13 +120,6 @@ function correctExtension(filename) {
         }
     }
     return filename;
-}
-
-function removeTrailingSeparator(filepath) {
-    if (filepath[filepath.length - 1] === path.sep) {
-        filepath = filepath.substr(0, filepath.length - 1);
-    }
-    return filepath;
 }
 
 function getProjectRootDirOfFilePath(filepath) {
@@ -128,15 +134,16 @@ function getProjectRootDirOfFilePath(filepath) {
     return projectrootdir;
 }
 
-function openTemplateAndSaveNewFile(type: string, namespace: string, filename: string, originalfilepath: string) {
+function openTemplateAndSaveNewFile(type: string, namespace: string, classname: string, originalfilepath: string) {
 
     let templatefileName = type + '.tmpl';
 
     vscode.workspace.openTextDocument(vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/' + templatefileName)
         .then((doc: vscode.TextDocument) => {
+            
             let text = doc.getText();
             text = text.replace('${namespace}', namespace);
-            text = text.replace('${classname}', filename);
+            text = text.replace('${classname}', classname);
             let cursorPosition = findCursorInTemlpate(text);
             text = text.replace('${cursor}', '');
             fs.writeFileSync(originalfilepath, text);
