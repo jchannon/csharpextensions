@@ -19,7 +19,8 @@
     "activationEvents": [
         "onLanguage:csharp",
         "onCommand:csharpextensions.createClass",
-        "onCommand:csharpextensions.createInterface"
+        "onCommand:csharpextensions.createInterface",
+        "onCommand:csharpextensions.createMVCControllerClass"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -31,17 +32,28 @@
             {
                 "command": "csharpextensions.createInterface",
                 "title": "New C# Interface"
+            },
+            {
+                "command": "csharpextensions.createMVCControllerClass",
+                "title": "New C# MVC Controller Class"
             }
         ],
         "menus": {
             "explorer/context": [
                 {
+                    "when":"explorerResourceIsFolder",
                     "group": "navigation@-1",
                     "command": "csharpextensions.createClass"
                 },
                 {
+                    "when":"explorerResourceIsFolder",
                     "group": "navigation@-1",
                     "command": "csharpextensions.createInterface"
+                },
+                {
+                    "when":"explorerResourceIsFolder && resourceFilename == Controllers",
+                    "group": "navigation@-1",
+                    "command": "csharpextensions.createMVCControllerClass"
                 }
             ]
         },
