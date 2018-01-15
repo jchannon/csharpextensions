@@ -5,7 +5,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as CsprojUtil from './csproj'
 import CodeActionProvider from './codeActionProvider';
+import { CsprojAndFile, Csproj, ActionArgs, ItemType } from './types'
 const parentfinder = require('find-parent-dir');
 const findupglob = require('find-up-glob');
 
@@ -86,15 +88,37 @@ function promptAndSave(args, templatetype: string) {
             if (os.platform() === "win32")
                 pathSepRegEx = /\\/g;
 
-            var namespace = path.dirname(filenamechildpath);
-            namespace = namespace.replace(pathSepRegEx, '.');
+            var useCsprojRootNamespace = vscode.workspace.getConfiguration().get('csharpextensions.useCsprojRootNamespace', false);
 
-            namespace = namespace.replace(/\s+/g, "_");
-            namespace = namespace.replace(/-/g, "_");
+            var nsresolver;
+            if (useCsprojRootNamespace) {
+                nsresolver = CsprojUtil.getPath(args.fsPath).then(function (res: string) {
+                    var result = CsprojUtil.forFile(res);
+                    return result;
+                }).then(function (csproj) {
+                    var csprojNamespace = CsprojUtil.getRootNamespace(csproj);
+                    if (csprojNamespace == undefined){
+                         vscode.window.showWarningMessage("RootNamespace element not found in " + csproj.name);
+                    }
+                    return csprojNamespace;
+                });
+            } else {
+                nsresolver = new Promise(function (resolve, reject) {
+                    var namespace = path.dirname(filenamechildpath);
+                    namespace = namespace.replace(pathSepRegEx, '.');
 
-            newfilepath = path.basename(newfilepath, '.cs');
+                    namespace = namespace.replace(/\s+/g, "_");
+                    namespace = namespace.replace(/-/g, "_");
+                    resolve(namespace);
+                });
+            }
 
-            openTemplateAndSaveNewFile(templatetype, namespace, newfilepath, originalfilepath);
+            nsresolver.then(function (namespace) {
+                newfilepath = path.basename(newfilepath, '.cs');
+                openTemplateAndSaveNewFile(templatetype, namespace, newfilepath, originalfilepath);
+            }).catch(function (err) {
+                vscode.window.showErrorMessage(err.message);
+            });
         });
 }
 
