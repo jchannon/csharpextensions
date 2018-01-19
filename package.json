@@ -89,10 +89,12 @@
         "vscode": "^1.0.0",
         "mocha": "^2.3.3",
         "@types/node": "^6.0.40",
-        "@types/mocha": "^2.2.32"
+        "@types/mocha": "^2.2.32",
+        "@types/xml2js": "^0.4.2"
     },
     "dependencies": {
         "find-parent-dir": "^0.3.0",
-        "find-up-glob": "^1.0.0"
+        "find-up-glob": "^1.0.0",
+        "xml2js": "^0.4.19"
     }
 }

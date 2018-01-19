@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [1.3.2] - 2018-01-19
+## Added
+ - Support for compilation roots defined in csproj file. The XML definition of the dotnet project is read and namespace tokens which are included for compilation will be removed. 
+
 ## [1.3.1] - 2017-12-17
 ### Added
  - Namespace tokens will be capitalized on file creation

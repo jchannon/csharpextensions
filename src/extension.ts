@@ -4,7 +4,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
+import * as xml2js from 'xml2js';
 import CodeActionProvider from './codeActionProvider';
 const parentfinder = require('find-parent-dir');
 const findupglob = require('find-up-glob');
@@ -72,21 +72,27 @@ function promptAndSave(args, templatetype: string) {
 
             let originalfilepath = newfilepath;
 
-            let projectrootdir = getProjectRootDirOfFilePath(newfilepath);
+            let projectFile = getProjectFile(newfilepath);
 
-            if (projectrootdir == null) {
+            if (projectFile == null) {
                 vscode.window.showErrorMessage("Unable to find project.json or *.csproj");
                 return;
             }
 
-            let filenamechildpath = newfilepath.slice(projectrootdir.length);
-            if(filenamechildpath .startsWith(path.sep)) {
+            let projectRootFolder = path.dirname(projectFile);
+            let filenamechildpath = newfilepath.slice(projectRootFolder.length);
+            if(filenamechildpath.startsWith(path.sep)) {
                 filenamechildpath = filenamechildpath.substring(1);
             }
 
             let namespaceTokens = path.dirname(filenamechildpath)
                                     .split(path.sep)
                                     .filter(token => token.trim.length <= 0);
+
+            if(projectFile.endsWith(".csproj")) {
+                namespaceTokens = removeCompilationRootFolder(projectFile, namespaceTokens);
+            }
+
             if(vscode.workspace.getConfiguration().get('csharpextensions.namespace.capitalize')) {
                 namespaceTokens = namespaceTokens.map(item => capitalize(item));
             }
@@ -122,16 +128,66 @@ function correctExtension(filename) {
     return filename;
 }
 
-function getProjectRootDirOfFilePath(filepath) {
-    var projectrootdir = parentfinder.sync(path.dirname(filepath), 'project.json');
+function getProjectFile(filepath): string {
+    let projectrootdir = parentfinder.sync(filepath, 'project.json');
     if (projectrootdir == null) {
-        var csprojfiles = findupglob.sync('*.csproj', { cwd: path.dirname(filepath) });
+        let csprojfiles = findupglob.sync('*.csproj', { cwd: path.dirname(filepath) });
         if (csprojfiles == null) {
             return null;
         }
-        projectrootdir = path.dirname(csprojfiles[0]);
+        projectrootdir = csprojfiles[0];
     }
     return projectrootdir;
+}
+
+function getCompilationRoots(projectFile: string): string[] {
+    let compilationsRoots = <string[]>[];
+    let parser = new xml2js.Parser({normalize: true});
+    let projectFileContent = fs.readFileSync(projectFile);
+    parser.parseString(projectFileContent, (err, result) => {
+        let itemGroups = result.Project.ItemGroup;
+        if(itemGroups) {
+            for(let itemGroup of itemGroups) {
+                let compileEntries = itemGroup.Compile;
+                if(compileEntries) {
+                    for(let compileEntry of compileEntries) {
+                        let includePattern = <string>compileEntry.$ && compileEntry.$.Include ? 
+                                                compileEntry.$.Include : undefined;
+                        if(includePattern) {
+                            let includeFolder = /^[\d\w\s/\\]+(?=\/)/g.exec(includePattern);
+                            if(includeFolder.length == 1) compilationsRoots.push(includeFolder[0]);
+                        }
+                    }
+                }
+            }
+        } 
+    });
+    return compilationsRoots;
+}
+
+function removeCompilationRootFolder(projectFile: string, namespaceTokens: string[]) {
+    let compilationsRoots = getCompilationRoots(projectFile);
+    for(let compilationsRoot of compilationsRoots) {
+        let counter = 0;
+        let cpRootTokens = compilationsRoot.split(/\\|\//g).filter(token => token.trim.length <= 0);
+        for(let index = 0; index < cpRootTokens.length; index++) {
+            if(namespaceTokens.length < index) {
+                break;
+            }
+            if(namespaceTokens[index] === cpRootTokens[index]) {
+                counter++
+            } else {
+                break;
+            }
+        }
+        if(counter > 0) {
+            for(let count = 0; count < counter; count++) {
+                namespaceTokens.shift();
+            }
+            break;
+        }
+    }
+    return namespaceTokens;
 }
 
 function openTemplateAndSaveNewFile(type: string, namespace: string, classname: string, originalfilepath: string) {
