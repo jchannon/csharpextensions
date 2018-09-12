@@ -1,3 +1,5 @@
+# ***** *PROJECT NO LONGER UNDER DEVELOPMENT* *****
+
 # C# Extensions
 
 Welcome to C# Extensions.  This VSCode extension provides extensions to the IDE that will hopefully speed up your development workflow.
