@@ -32,6 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
     //context.subscriptions.push(disposable);
     context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createClass', createClass));
     context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createInterface', createInterface));
+    context.subscriptions.push(vscode.commands.registerCommand('csharpextensions.createMVCControllerClass', createMVCControllerClass));
 
     const codeActionProvider = new CodeActionProvider();
     let disposable = vscode.languages.registerCodeActionsProvider(documentSelector, codeActionProvider);
@@ -44,6 +45,10 @@ function createClass(args) {
 
 function createInterface(args) {
     promptAndSave(args, 'interface');
+}
+
+function createMVCControllerClass(args) {
+    promptAndSave(args, 'mvccontrollerclass');
 }
 
 function promptAndSave(args, templatetype: string) {
