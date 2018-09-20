@@ -46,7 +46,7 @@
             ]
         },
         "configuration": {
-            "title": "C# Extensions configuration",
+            "title": "C# Extensions",
             "properties": {
                 "csharpextensions.privateMemberPrefix": {
                     "type": "string",
@@ -62,6 +62,19 @@
                     "type": "boolean",
                     "default": true,
                     "description": "If true the document will be reformatted after codeactions are used."
+                },
+                "csharpextensions.namespace.capitalize": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "If true the tokens of the generated namespace will be capitalized. For example the path 'my/vscode/project/path' will become 'My.Vscode.Project.Path'."
+                },
+                "csharpextensions.namespace.tokenMappings": {
+                    "type": [
+                        "object",
+                        null
+                    ],
+                    "default": null,
+                    "description": "An mapping of namepsace tokens which will be replaced by the value. Usefull for namespace tokens which should be written in a different manner like shorthands or special names. For example {'vscode': 'VSCode'} will replace the 'vscode' token by VSCode in namespace declaration."
                 }
             }
         }
@@ -76,10 +89,12 @@
         "vscode": "^1.0.0",
         "mocha": "^2.3.3",
         "@types/node": "^6.0.40",
-        "@types/mocha": "^2.2.32"
+        "@types/mocha": "^2.2.32",
+        "@types/xml2js": "^0.4.2"
     },
     "dependencies": {
         "find-parent-dir": "^0.3.0",
-        "find-up-glob": "^1.0.0"
+        "find-up-glob": "^1.0.0",
+        "xml2js": "^0.4.19"
     }
 }

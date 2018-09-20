@@ -4,7 +4,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
+import * as xml2js from 'xml2js';
 import CodeActionProvider from './codeActionProvider';
 const parentfinder = require('find-parent-dir');
 const findupglob = require('find-up-glob');
@@ -16,6 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
         language: 'csharp',
         scheme: 'file'
     };
+
     // Use the console to output diagnostic information (console.log) and errors (console.error)
     // This line of code will only be executed once when your extension is activated
     //console.log('Congratulations, your extension "newclassextension" is now active!');
@@ -51,14 +52,16 @@ function promptAndSave(args, templatetype: string) {
         args = { _fsPath: vscode.workspace.rootPath }
     }
     let incomingpath: string = args._fsPath;
-    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: 'new' + templatetype + '.cs' })
+
+    let promptPrefix = templatetype === 'interface' ? 'INew' : 'New';
+    vscode.window.showInputBox({ ignoreFocusOut: true, prompt: 'Please enter filename', value: promptPrefix + capitalize(templatetype) + '.cs'})
         .then((newfilename) => {
 
             if (typeof newfilename === 'undefined') {
                 return;
             }
 
-            var newfilepath = incomingpath + path.sep + newfilename;
+            let newfilepath = incomingpath + path.sep + newfilename;
 
             if (fs.existsSync(newfilepath)) {
                 vscode.window.showErrorMessage("File already exists");
@@ -67,35 +70,51 @@ function promptAndSave(args, templatetype: string) {
 
             newfilepath = correctExtension(newfilepath);
 
-            var originalfilepath = newfilepath;
+            let originalfilepath = newfilepath;
 
-            var projectrootdir = getProjectRootDirOfFilePath(newfilepath);
+            let projectFile = getProjectFile(newfilepath);
 
-            if (projectrootdir == null) {
+            if (projectFile == null) {
                 vscode.window.showErrorMessage("Unable to find project.json or *.csproj");
                 return;
             }
 
-            projectrootdir = removeTrailingSeparator(projectrootdir);
+            let projectRootFolder = path.dirname(projectFile);
+            let filenamechildpath = newfilepath.slice(projectRootFolder.length);
+            if(filenamechildpath.startsWith(path.sep)) {
+                filenamechildpath = filenamechildpath.substring(1);
+            }
 
-            var newroot = projectrootdir.substr(projectrootdir.lastIndexOf(path.sep) + 1);
+            let namespaceTokens = path.dirname(filenamechildpath)
+                                    .split(path.sep)
+                                    .filter(token => token.trim.length <= 0);
 
-            var filenamechildpath = newfilepath.substring(newfilepath.lastIndexOf(newroot));
+            if(projectFile.endsWith(".csproj")) {
+                namespaceTokens = removeCompilationRootFolder(projectFile, namespaceTokens);
+            }
 
-            var pathSepRegEx = /\//g;
-            if (os.platform() === "win32")
-                pathSepRegEx = /\\/g;
+            if(vscode.workspace.getConfiguration().get('csharpextensions.namespace.capitalize')) {
+                namespaceTokens = namespaceTokens.map(item => capitalize(item));
+            }
+            let namespaceTokenMappings = vscode.workspace.getConfiguration().get('csharpextensions.namespace.tokenMappings');
+            if(namespaceTokenMappings instanceof Object) {
+                namespaceTokens = namespaceTokens.map(item => 
+                    namespaceTokenMappings[item.toLowerCase()] != null ? 
+                    namespaceTokenMappings[item.toLowerCase()] : item);
+            }
 
-            var namespace = path.dirname(filenamechildpath);
-            namespace = namespace.replace(pathSepRegEx, '.');
-
+            let namespace = namespaceTokens.join('.');
             namespace = namespace.replace(/\s+/g, "_");
             namespace = namespace.replace(/-/g, "_");
 
-            newfilepath = path.basename(newfilepath, '.cs');
-
-            openTemplateAndSaveNewFile(templatetype, namespace, newfilepath, originalfilepath);
+            // Chomp of .cs and other extension like MyClass.Writer.cs for partial classes.
+            let classname = newfilename.substring(0, newfilename.indexOf('.'));
+            openTemplateAndSaveNewFile(templatetype, namespace, classname, originalfilepath);
         });
+}
+
+function capitalize(word : string) {
+    return word.charAt(0).toUpperCase() + word.substr(1);
 }
 
 function correctExtension(filename) {
@@ -109,34 +128,78 @@ function correctExtension(filename) {
     return filename;
 }
 
-function removeTrailingSeparator(filepath) {
-    if (filepath[filepath.length - 1] === path.sep) {
-        filepath = filepath.substr(0, filepath.length - 1);
-    }
-    return filepath;
-}
-
-function getProjectRootDirOfFilePath(filepath) {
-    var projectrootdir = parentfinder.sync(path.dirname(filepath), 'project.json');
+function getProjectFile(filepath): string {
+    let projectrootdir = parentfinder.sync(filepath, 'project.json');
     if (projectrootdir == null) {
-        var csprojfiles = findupglob.sync('*.csproj', { cwd: path.dirname(filepath) });
+        let csprojfiles = findupglob.sync('*.csproj', { cwd: path.dirname(filepath) });
         if (csprojfiles == null) {
             return null;
         }
-        projectrootdir = path.dirname(csprojfiles[0]);
+        projectrootdir = csprojfiles[0];
     }
     return projectrootdir;
 }
 
-function openTemplateAndSaveNewFile(type: string, namespace: string, filename: string, originalfilepath: string) {
+function getCompilationRoots(projectFile: string): string[] {
+    let compilationsRoots = <string[]>[];
+    let parser = new xml2js.Parser({normalize: true});
+    let projectFileContent = fs.readFileSync(projectFile);
+    parser.parseString(projectFileContent, (err, result) => {
+        let itemGroups = result.Project.ItemGroup;
+        if(itemGroups) {
+            for(let itemGroup of itemGroups) {
+                let compileEntries = itemGroup.Compile;
+                if(compileEntries) {
+                    for(let compileEntry of compileEntries) {
+                        let includePattern = <string>compileEntry.$ && compileEntry.$.Include ? 
+                                                compileEntry.$.Include : undefined;
+                        if(includePattern) {
+                            let includeFolder = /^[\d\w\s/\\]+(?=\/)/g.exec(includePattern);
+                            if(includeFolder.length == 1) compilationsRoots.push(includeFolder[0]);
+                        }
+                    }
+                }
+            }
+        } 
+    });
+    return compilationsRoots;
+}
+
+function removeCompilationRootFolder(projectFile: string, namespaceTokens: string[]) {
+    let compilationsRoots = getCompilationRoots(projectFile);
+    for(let compilationsRoot of compilationsRoots) {
+        let counter = 0;
+        let cpRootTokens = compilationsRoot.split(/\\|\//g).filter(token => token.trim.length <= 0);
+        for(let index = 0; index < cpRootTokens.length; index++) {
+            if(namespaceTokens.length < index) {
+                break;
+            }
+            if(namespaceTokens[index] === cpRootTokens[index]) {
+                counter++
+            } else {
+                break;
+            }
+        }
+        if(counter > 0) {
+            for(let count = 0; count < counter; count++) {
+                namespaceTokens.shift();
+            }
+            break;
+        }
+    }
+    return namespaceTokens;
+}
+
+function openTemplateAndSaveNewFile(type: string, namespace: string, classname: string, originalfilepath: string) {
 
     let templatefileName = type + '.tmpl';
 
     vscode.workspace.openTextDocument(vscode.extensions.getExtension('jchannon.csharpextensions').extensionPath + '/templates/' + templatefileName)
         .then((doc: vscode.TextDocument) => {
+            
             let text = doc.getText();
             text = text.replace('${namespace}', namespace);
-            text = text.replace('${classname}', filename);
+            text = text.replace('${classname}', classname);
             let cursorPosition = findCursorInTemlpate(text);
             text = text.replace('${cursor}', '');
             fs.writeFileSync(originalfilepath, text);
